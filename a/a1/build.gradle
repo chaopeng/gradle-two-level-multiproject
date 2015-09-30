@@ -1,0 +1,4 @@
+dependencies {
+    compile project(':b:b1')
+	compile (libraries.guava, libraries.jackson)
+}

@@ -1,0 +1,88 @@
+buildscript {
+  repositories {
+    jcenter()
+  }
+
+  dependencies {
+    classpath 'com.github.ben-manes:gradle-versions-plugin:0.10.1'
+  }
+}
+
+apply plugin: 'java'
+apply plugin: 'idea'
+
+idea.module {
+    excludeDirs = [file(".gradle")]
+    ["export"].each {
+        excludeDirs << file(project.projectDir.path + "/" + it)
+    }
+}
+
+task cleanExport << {
+    delete file("export")
+}
+clean.dependsOn(cleanExport)
+
+subprojects {
+
+  apply plugin: 'java'
+  apply plugin: 'idea'
+  apply plugin: 'com.github.ben-manes.versions'
+  apply from: project.rootDir.path + "/libraries.gradle"
+
+  compileJava.options.encoding = 'UTF-8'
+
+  sourceCompatibility = 1.8
+  targetCompatibility = 1.8
+
+  ext.isProject = new File( project.projectDir.path + '/build.gradle' ).exists()
+  project.version = '1.0.0'
+
+  repositories {
+    mavenCentral()
+  }
+
+  task initPath << {
+    if (isProject) {
+      sourceSets*.java.srcDirs*.each { it.mkdirs() }
+      sourceSets*.resources.srcDirs*.each { it.mkdirs() }
+    }
+  }
+  
+  task copyAllDependencies(type: Copy) {
+    from configurations.runtime
+    into 'build/libs/lib'
+  }
+  assemble.dependsOn(copyAllDependencies)
+  
+  ext.exportPath = project.rootDir.path + '/export/'
+  
+  task tarClean << {
+    def exportName = project.name + "-" + project.version + '-distribution.tar.gz'
+    delete exportPath + exportName
+  }
+  
+  task tar(type: Tar) {
+    def exportName = project.name + "-" + project.version + '-distribution.tar.gz'
+    
+    from 'build/libs'
+    archiveName = exportName
+    destinationDir = file(exportPath)
+    compression = Compression.GZIP
+  }
+  
+  task skip {
+  }
+  
+  task export(type: GradleBuild) {
+    if (isProject) {
+      tasks = ['tarClean', 'assemble', 'tar']
+    }
+    else {
+      tasks = ['skip']
+    }
+  }
+  
+  
+}
+  
